@@ -1,73 +1,59 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "forge-std/Test.sol";
-import "../src/MultiSigWallet.sol";
+import {Test} from "forge-std/Test.sol";
+import {MultiSigWallet} from "../src/MultiSigWallet.sol";
 
 contract MultiSigWalletTest is Test {
-    MultiSigWallet public wallet;
+    MultiSigWallet wallet;
     
-    // define 3 test accounts
-    address public alice = address(0x1);
-    address public bob = address(0x2);
-    address public carol = address(0x3);
-    address public nonOwner = address(0x4);
+    address owner1 = address(0x1);
+    address owner2 = address(0x2);
+    address owner3 = address(0x3);
+    address attacker = address(0x4);
+    address receiver = address(0x5);
 
-    address[] public owners;
-
-    // Initialize
     function setUp() public {
-        owners.push(alice);
-        owners.push(bob);
-        owners.push(carol);
+        address[] memory owners = new address[](3);
+        owners[0] = owner1;
+        owners[1] = owner2;
+        owners[2] = owner3;
 
         wallet = new MultiSigWallet(owners, 2);
-        
         vm.deal(address(wallet), 10 ether); 
     }
 
-    // Happy Path
-    function testSubmitAndExecuteTransaction() public {
-        address receiver = address(0x5);
-        uint amount = 1 ether;
-        bytes memory data = ""; 
+    function test_ExecutionFlow() public {
+        vm.prank(owner1);
+        wallet.submitTransaction(receiver, 1 ether, "");
 
-
-        vm.prank(alice); 
-        wallet.submitTransaction(receiver, amount, data);
-
-
-        vm.prank(alice);
+        vm.prank(owner1);
         wallet.confirmTransaction(0);
 
-
-        vm.prank(bob);
+        vm.prank(owner2);
         wallet.confirmTransaction(0);
 
-
-        vm.prank(bob);
+        vm.prank(owner2);
         wallet.executeTransaction(0);
 
-
-        assertEq(receiver.balance, amount);
+        assertEq(receiver.balance, 1 ether);
     }
 
-    // Security & Revert Cases
-    function testRevertWhenNotOwnerSubmits() public {
-        vm.expectRevert("Not an owner");
+    function test_RevertWhen_UnauthorizedSubmit() public {
+        vm.prank(attacker);
+        vm.expectRevert(MultiSigWallet.NotOwner.selector);
+        wallet.submitTransaction(receiver, 1 ether, "");
+    }
+
+    function test_RevertWhen_ExecuteBelowQuorum() public {
+        vm.prank(owner1);
+        wallet.submitTransaction(receiver, 1 ether, "");
         
-        vm.prank(nonOwner);
-        wallet.submitTransaction(address(0x5), 1 ether, "");
-    }
-
-    function testRevertExecuteBeforeConfirmations() public {
-        vm.prank(alice);
-        wallet.submitTransaction(address(0x5), 1 ether, "");
-        vm.prank(alice);
+        vm.prank(owner1);
         wallet.confirmTransaction(0);
 
-        vm.expectRevert("Cannot execute: confirmations not reached");
-        
-        vm.prank(alice);
+        vm.prank(owner1);
+        vm.expectRevert(MultiSigWallet.QuorumNotReached.selector);
         wallet.executeTransaction(0);
     }
 }
