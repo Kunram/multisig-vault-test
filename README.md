@@ -1,18 +1,30 @@
-## 🛠 Quick Start
+# evm-multisig-vault
 
-This project is built using [Foundry](https://book.getfoundry.sh/), a blazing fast, portable, and modular toolkit for Ethereum application development written in Rust.
+A gas-optimized, bare-bones Multi-Signature Wallet implementation for the Ethereum Virtual Machine (EVM). It utilizes Custom Errors for low gas consumption and strictly enforces state transitions through isolated modifiers.
 
-### Prerequisites
-- Install Foundry: `curl -L https://foundry.paradigm.xyz | bash`
+## Architecture
 
-### Build & Test
+- **M-of-N Threshold**: Requires a predefined `numConfirmationsRequired` quorum to execute `.call{}` payloads.
+- **State Mutability Enforcement**: Modifiers (`notExecuted`, `notConfirmed`) isolate state transitions to prevent reentrancy and double-spending.
+- **Gas Efficiency**: Relies exclusively on `Custom Errors` introduced in Solidity 0.8.4+ rather than string-based `require` statements.
+
+## Repository Structure
+
+- `src/`: Core EVM smart contract logic.
+- `test/`: State machine and access control tests using Foundry.
+- `script/`: Deployment automation scripts.
+
+## Usage
+
+Built and tested with [Foundry](https://book.getfoundry.sh/).
+
+### Build
 ```bash
-# Clone the repository
-git clone [https://github.com/Kunram/multisig-vault-test.git](https://github.com/Kunram/multisig-vault-test.git)
-cd multisig-vault-test
-
-# Compile the smart contracts
 forge build
+```
 
-# Run the test suite with detailed trace logs (-vvv)
+### Test
+Executes the test suite with trace logs for reverted state transactions.
+```bash
 forge test -vvv
+```
